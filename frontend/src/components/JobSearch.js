@@ -5,12 +5,22 @@ const JobSearch = ({ onResults }) => {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
+
+  const recommendations = [
+    "Yogyakarta",
+    "Frontend",
+    "Backend",
+    "Fullstack",
+    "React Developer",
+  ];
 
   useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
+
     if (!SpeechRecognition) {
       setError("Browser tidak mendukung fitur pengenalan suara.");
       return;
@@ -19,7 +29,6 @@ const JobSearch = ({ onResults }) => {
     recognitionRef.current = new SpeechRecognition();
     recognitionRef.current.lang = "id-ID";
     recognitionRef.current.interimResults = true;
-    recognitionRef.current.continuous = false;
 
     recognitionRef.current.onresult = (event) => {
       let transcript = "";
@@ -30,20 +39,14 @@ const JobSearch = ({ onResults }) => {
     };
 
     recognitionRef.current.onerror = (event) => {
-      setError("Error pada pengenalan suara: " + event.error);
+      setError("Error pengenalan suara: " + event.error);
       setIsListening(false);
       recognitionRef.current.stop();
     };
 
-    recognitionRef.current.onend = () => {
-      setIsListening(false);
-    };
+    recognitionRef.current.onend = () => setIsListening(false);
 
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
+    return () => recognitionRef.current?.stop();
   }, []);
 
   const toggleListening = () => {
@@ -58,7 +61,7 @@ const JobSearch = ({ onResults }) => {
         setIsListening(true);
         setError(null);
       } catch {
-        setError("Perekaman suara sudah berjalan");
+        setError("Perekaman suara sedang berjalan.");
       }
     }
   };
@@ -69,8 +72,10 @@ const JobSearch = ({ onResults }) => {
       setError("Masukkan kata kunci pencarian");
       return;
     }
-    setError(null);
+
     setLoading(true);
+    setError(null);
+    setSuggestions([]);
 
     try {
       const response = await fetch(
@@ -79,74 +84,72 @@ const JobSearch = ({ onResults }) => {
       const data = await response.json();
       if (response.ok) {
         onResults(data.results);
+        setSuggestions(data.suggestions || []);
       } else {
         setError(data.error || "Terjadi kesalahan saat pencarian");
       }
     } catch {
       setError("Gagal menghubungi server");
     }
+
     setLoading(false);
   };
 
+  const handleRecommendationClick = (text) => {
+    setQuery(text);
+    setError(null);
+    setTimeout(() => document.querySelector("form").requestSubmit(), 100);
+  };
   return (
     <div
       style={{
-        maxWidth: "700px",
-        margin: "50px auto",
-        padding: "0 24px",
-        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+        maxWidth: "720px",
+        margin: "40px auto",
+        padding: "0 20px",
+        textAlign: "center",
+        fontFamily: "system-ui, sans-serif",
       }}
     >
-      {/* Branding Section */}
+      {/* Branding */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
-          marginBottom: 30,
-          gap: 15,
           justifyContent: "center",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 32,
         }}
       >
         <img
-          src="/logo.png" // atau "/logo.svg"
-          alt="SmartJob Finder Logo"
-          style={{ height: 60, width: 60, borderRadius: "12px" }}
+          src="/images/Desain tanpa judul-3.png"
+          alt="SmartJob Logo"
+          style={{ width: 80, height: 80, objectFit: "contain" }}
         />
-        <div>
-          <h1
-            style={{
-              fontSize: "2.5rem",
-              fontWeight: "800",
-              color: "#1e3a8a",
-              margin: 0,
-            }}
-          >
-            SmartJob Finder
-          </h1>
-          <p
-            style={{
-              fontSize: "1rem",
-              color: "#4b5563",
-              margin: 0,
-              fontWeight: "500",
-            }}
-          >
-            Solusi Cerdas Menemukan Karier Impian
-          </p>
-        </div>
+        <h1
+          style={{
+            fontSize: "2.25rem",
+            color: "#1e3a8a",
+            fontWeight: 800,
+            letterSpacing: "-0.5px",
+          }}
+        >
+          SmartJob Finder
+        </h1>
       </div>
 
-      {/* Search Form */}
+      {/* Form Pencarian */}
       <form onSubmit={handleSearch}>
         <div
           style={{
             display: "flex",
-            background: "#fff",
-            borderRadius: "12px",
-            boxShadow:
-              "0 6px 14px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0,0,0,0.05)",
+            background: "#ffffff",
+            borderRadius: 16,
             border: "1px solid #d1d5db",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
             overflow: "hidden",
+            width: "100%",
+            maxWidth: "680px",
+            margin: "0 auto",
           }}
         >
           <input
@@ -157,71 +160,128 @@ const JobSearch = ({ onResults }) => {
             style={{
               flex: 1,
               border: "none",
-              padding: "14px 20px",
-              fontSize: "1.1rem",
+              padding: "16px 20px",
+              fontSize: "1rem",
               outline: "none",
-              fontWeight: 500,
-              color: "#111827",
-              fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+              background: "transparent",
             }}
           />
-
-          <button
-            type="button"
-            onClick={toggleListening}
-            style={{
-              backgroundColor: isListening ? "#ef4444" : "#3b82f6",
-              border: "none",
-              padding: "0 18px",
-              cursor: "pointer",
-              color: "#fff",
-              fontSize: "1.25rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "background-color 0.3s ease",
-            }}
-            title={isListening ? "Berhenti merekam" : "Mulai rekam suara"}
-          >
-            {isListening ? <FaMicrophoneSlash /> : <FaMicrophone />}
-          </button>
 
           {query.trim() && (
             <button
               type="submit"
               disabled={loading}
               style={{
-                backgroundColor: "#1e40af",
+                background: "transparent",
                 border: "none",
-                padding: "0 20px",
+                padding: "0 16px",
                 cursor: loading ? "not-allowed" : "pointer",
-                color: "#fff",
-                fontSize: "1.3rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background-color 0.3s ease",
+                color: "#1e40af",
+                fontSize: "1.4rem",
               }}
               title="Cari"
             >
               {loading ? "..." : <FaPaperPlane />}
             </button>
           )}
-        </div>
 
-        {error && (
+          <button
+            type="button"
+            onClick={toggleListening}
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: "0 16px",
+              cursor: "pointer",
+              color: isListening ? "#dc2626" : "#3b82f6",
+              fontSize: "1.4rem",
+            }}
+            title={isListening ? "Matikan Voice" : "Aktifkan Voice"}
+          >
+            {isListening ? <FaMicrophoneSlash /> : <FaMicrophone />}
+          </button>
+        </div>
+      </form>
+
+      {/* Rekomendasi Cepat */}
+      {recommendations.length > 0 && (
+        <div
+          style={{
+            marginTop: 24,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            justifyContent: "center",
+          }}
+        >
+          {recommendations.map((item) => (
+            <button
+              key={item}
+              onClick={() => handleRecommendationClick(item)}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 20,
+                background: "#f3f4f6",
+                border: "1px solid #cbd5e1",
+                fontSize: "0.9rem",
+                color: "#374151",
+                cursor: "pointer",
+                transition: "0.2s ease-in-out",
+              }}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <p
+          style={{
+            color: "#dc2626",
+            marginTop: 20,
+            fontWeight: 600,
+            fontSize: "1rem",
+          }}
+        >
+          {error}
+        </p>
+      )}
+
+      {/* Saran Pencarian */}
+      {suggestions.length > 0 && (
+        <div style={{ marginTop: 32 }}>
           <p
             style={{
-              marginTop: 14,
-              textAlign: "center",
-              color: "#dc2626",
-              fontWeight: "600",
+              fontWeight: 600,
+              fontSize: "1rem",
+              marginBottom: 10,
+              color: "#1f2937",
             }}
           >
-            {error}
+            Mungkin yang kamu maksud:
           </p>
-        )}
-      </form>
+          {suggestions.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => handleRecommendationClick(s)}
+              style={{
+                margin: "4px 6px",
+                padding: "6px 12px",
+                border: "none",
+                borderRadius: 10,
+                backgroundColor: "#e0f2fe",
+                color: "#0369a1",
+                cursor: "pointer",
+                fontSize: "0.9rem",
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
